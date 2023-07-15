@@ -61,4 +61,4 @@ const mapstateToprops=(state)=>{
 }
 
 export default connect(mapstateToprops)(AppNavbar);
-<AiFillSetting className="mr-2" />
+
