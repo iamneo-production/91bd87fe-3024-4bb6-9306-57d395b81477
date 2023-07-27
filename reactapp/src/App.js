@@ -1,17 +1,17 @@
-import {React,useEffect} from 'react';
-import Login from './components/Login/login';
-import Register from './components/Sigin/Signin';
+import { React } from 'react';
+import { Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import Landing from '../src/components/Pages/landinpage';
-import GeneralLedger from './components/Pages/GeneralLedger';
-import Expenses from './components/Pages/Expenses';
-import Users from './components/Pages/Users';
-import Inventory from './components/Pages/Inventory';
-import Bill from './components/Pages/Bill';
-import Payroll from './components/Pages/Payroll';
-import Tax from './components/Pages/Tax';
+import Login from './components/Login/login';
 import Analysis from './components/Pages/Analysis';
+import Bill from './components/Pages/Bill';
+import Expenses from './components/Pages/Expenses';
+import GeneralLedger from './components/Pages/GeneralLedger';
+import Inventory from './components/Pages/Inventory';
+import Payroll from './components/Pages/Payroll';
 import Settings from './components/Pages/Settings';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Tax from './components/Pages/Tax';
+import Users from './components/Pages/Users';
+import Register from './components/Sigin/Signin';
 
 const App = () => {
   

@@ -1,131 +1,331 @@
-import React from 'react';
-import { Container, Row, Col, Card, Form, Button, Table } from 'react-bootstrap';
+// src/components/TaxPrepApp.js
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { Container, Row, Col, Form, Button, Card, Table, Modal } from 'react-bootstrap';
+import TaxReportDocument from './TaxReportDocument';
 import Slidebar from '../NavBar/Slidebar';
-import AppNavbar from '../NavBar/Navbar';
-import Footer from '../NavBar/footer';
+import Navbar from '../NavBar/Navbar';
+const TaxPrepApp = () => {
+  const [formData, setFormData] = useState({
+    income: '',
+    expenses: '',
+    deductions: '',
+    credits: '',
+    month: '',
+    year: '',
+    taxJurisdiction: 'India', // Added default tax jurisdiction for simplicity
+  });
+  const authToken = localStorage.getItem('token');
+  const  vfe=localStorage.getItem('email');
 
-const TaxPreparation = () => {
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const [taxResult, setTaxResult] = useState({
+    taxableIncome: '',
+    taxAmount: '',
+    totalCredits: '',
+    netTax: '',
+    isPaid: false,
+    mail: localStorage.getItem('email')
+
+  });
+
+  const [showModal, setShowModal] = useState(false);
+  const [allTaxData, setAllTaxData] = useState([]);
+
+  // Function to fetch all tax data from the backend
+  const fetchAllTaxData = () => {
+    axios.get('http://localhost:8181/api/tax', {
+      headers: {
+        "Authorization": `Bearer ${authToken}`
+      }
+    })
+      .then(response => {
+        setAllTaxData(response.data);
+      })
+      .catch(error => {
+        console.error('Error fetching tax data:', error);
+      });
   };
 
+  useEffect(() => {
+    fetchAllTaxData();
+  }, []);
+
+  const handleInputChange = (event) => {
+    const { name, value } = event.target;
+    setFormData(prevData => ({
+      ...prevData,
+      [name]: value,
+    }));
+  };
+
+  const calculateTax = () => {
+    const totalIncome = parseFloat(formData.income);
+    const totalExpenses = parseFloat(formData.expenses);
+    const totalDeductions = parseFloat(formData.deductions);
+    const totalCredits = parseFloat(formData.credits);
+
+    const taxableIncome = totalIncome - totalExpenses - totalDeductions;
+    let taxAmount = 0;
+
+    // Indian tax slabs and rates
+    if (formData.taxJurisdiction === 'India') {
+      if (taxableIncome <= 250000) {
+        taxAmount = 0;
+      } else if (taxableIncome <= 500000) {
+        taxAmount = taxableIncome * 0.05;
+      } else if (taxableIncome <= 1000000) {
+        taxAmount = taxableIncome * 0.2;
+      } else {
+        taxAmount = taxableIncome * 0.3;
+      }
+    }
+
+    const netTax = Math.max(taxAmount - totalCredits, 0);
+
+    setTaxResult({
+      ...taxResult,
+      taxableIncome: taxableIncome,
+      taxAmount: taxAmount,
+      totalCredits: totalCredits,
+      netTax: netTax,
+    });
+  };
+
+  const generateReport = () => {
+    setShowModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+  };
+
+  const handlePaidSwitch = (index) => {
+    const taxDataToUpdate = allTaxData[index];
+    const idToUpdate = taxDataToUpdate.id;
+  
+    axios.put(`http://localhost:8181/api/tax/${idToUpdate}?isPaid=${!taxDataToUpdate.isPaid}`, null, {
+      headers: {
+        "Authorization": `Bearer ${authToken}`
+      }
+    })
+      .then(response => {
+        fetchAllTaxData(); // Update the tax data list with the updated data
+        console.log('Paid status updated successfully!');
+      })
+      .catch(error => {
+        console.error('Error updating paid status:', error);
+      });
+  };
+  // Function to generate the PDF document
+  const generatePDFDocument = () => {
+    const pdfDoc = (
+      <TaxReportDocument taxResult={taxResult} formData={formData} />
+    );
+    return pdfDoc;
+  };
+
+  // Function to download the PDF report
+  const downloadPDFReport = () => {
+    const pdfDoc = generatePDFDocument();
+
+    const blob = new Blob([pdfDoc], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+
+    const tempLink = document.createElement('a');
+    tempLink.href = url;
+    tempLink.setAttribute('download', `TaxReport_${formData.year}_${formData.month}.pdf`);
+    tempLink.click();
+
+    URL.revokeObjectURL(url);
+  };
+
+  // Function to save tax data to the backend
+  const saveTaxDataToDB = () => {
+    axios.post('http://localhost:8181/api/tax', taxResult, {
+      headers: {
+        "Authorization": `Bearer ${authToken}`
+      }
+    })
+      .then(response => {
+        fetchAllTaxData(); // Update the tax data list with the new data
+        console.log('Data saved successfully!');
+      })
+      .catch(error => {
+        console.error('Error saving data:', error);
+      });
+  };
+  
+
   return (
-    <Container>
+    <Container className="mt-4">
       <Slidebar />
-      <AppNavbar />
-      <Row className="justify-content-center mt-5" style={{ marginLeft: '20px' }}>
-        <Col md={9}>
-          <Card style={{ height: '340px' }}>
-            <Card.Header as="h5">Tax Form</Card.Header>
+      <Navbar />
+      <Row>
+        <Col>
+          <Card>
             <Card.Body>
-              <Form onSubmit={handleSubmit}>
-                {/* Add tax form fields and inputs */}
-                {/* Example: */}
-                <Form.Group controlId="income">
-                  <Form.Label>Income</Form.Label>
-                  <Form.Control type="number" name="income" />
+              <h1 className="mb-4">Tax Preparation Application</h1>
+              <Form>
+                <Form.Group>
+                  <Form.Label>Income:</Form.Label>
+                  <Form.Control
+                    type="number"
+                    name="income"
+                    value={formData.income}
+                    onChange={handleInputChange}
+                    placeholder="Enter your income"
+                  />
                 </Form.Group>
-                <Form.Group controlId="deductions">
-                  <Form.Label>Deductions</Form.Label>
-                  <Form.Control type="number" name="deductions" />
+                <Form.Group>
+                  <Form.Label>Expenses:</Form.Label>
+                  <Form.Control
+                    type="number"
+                    name="expenses"
+                    value={formData.expenses}
+                    onChange={handleInputChange}
+                    placeholder="Enter your expenses"
+                  />
                 </Form.Group>
-                <Form.Group controlId="credits">
-                  <Form.Label>Tax Credits</Form.Label>
-                  <Form.Control type="number" name="credits" />
+                <Form.Group>
+                  <Form.Label>Deductions:</Form.Label>
+                  <Form.Control
+                    type="number"
+                    name="deductions"
+                    value={formData.deductions}
+                    onChange={handleInputChange}
+                    placeholder="Enter your deductions"
+                  />
                 </Form.Group>
-                <br />
-                <Button variant="primary" type="submit">
+                <Form.Group>
+                  <Form.Label>Credits:</Form.Label>
+                  <Form.Control
+                    type="number"
+                    name="credits"
+                    value={formData.credits}
+                    onChange={handleInputChange}
+                    placeholder="Enter your credits"
+                  />
+                </Form.Group>
+                <Form.Group>
+                  <Form.Label>Month:</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="month"
+                    value={formData.month}
+                    onChange={handleInputChange}
+                    placeholder="Enter the month"
+                  />
+                </Form.Group>
+                <Form.Group>
+                  <Form.Label>Year:</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="year"
+                    value={formData.year}
+                    onChange={handleInputChange}
+                    placeholder="Enter the year"
+                  />
+                </Form.Group>
+                <Button variant="primary" onClick={calculateTax}>
                   Calculate Tax
                 </Button>
               </Form>
             </Card.Body>
           </Card>
         </Col>
-        <Col md={3}>
-          <Card style={{ height: '340px' }}>
-            <Card.Header as="h5">Tax Reports</Card.Header>
-            <Card.Body>
-              {/* Display tax reports generated */}
-              {/* Example: */}
-              <p>Income Tax: $1000</p>
-              <p>Property Tax: $500</p>
-              <p>Sales Tax: $1000</p>
-              <p>Wealth Tax: $1000</p>
-              <p>Gift Tax: $1000</p>
-              <p>Custom Tax: $1000</p>
-              <p>Service Tax: $1000</p>
-
-              {/* Add more tax reports as needed */}
-            </Card.Body>
-          </Card>
+        <Col>
+          <Row className="h-100">
+            <Col className="h-100">
+              <div>
+                {taxResult.taxableIncome !== '' && (
+                  <Card className="h-100 mt-4">
+                    <Card.Body>
+                      <h3>Tax Calculation Result:</h3>
+                      <p>
+                        <strong>Taxable Income:</strong> ₹ {taxResult.taxableIncome}<br />
+                        <strong>Tax Amount:</strong> ₹ {taxResult.taxAmount}<br />
+                        <strong>Total Credits:</strong> ₹ {taxResult.totalCredits}<br />
+                        <strong>Net Tax:</strong> ₹ {taxResult.netTax}<br />
+                        <strong>Paid:</strong> {taxResult.isPaid ? 'Yes' : 'No'}<br />
+                        <strong>Month:</strong> {formData.month}, <strong>Year:</strong> {formData.year}
+                      </p>
+                      <Button variant="success" onClick={generateReport}>
+                        Generate Report
+                      </Button>
+                    </Card.Body>
+                  </Card>
+                )}
+              </div>
+            </Col>
+          </Row>
         </Col>
       </Row>
-      <Row className="justify-content-center mt-5">
-        <Col md={8}>
-          <Card>
-            <Card.Header as="h5">Tax Records</Card.Header>
-            <Card.Body style={{ maxHeight: '300px', overflowY: 'auto' }}>
-              <Table striped bordered>
-                <thead>
-                  <tr>
-                    <th>S.No</th>
-                    <th>Year</th>
-                    <th>Tax ID</th>
-                    <th>Receipt No</th>
-                    <th>Income</th>
-                    <th>Tax Paid</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>1</td>
-                    <td>2023</td>
-                    <td>TAX123</td>
-                    <td>12345</td>
-                    <td>$50,000</td>
-                    <td>$5,000</td>
-                  </tr>
-                  <tr>
-                    <td>2</td>
-                    <td>2022</td>
-                    <td>TAX456</td>
-                    <td>67890</td>
-                    <td>$60,000</td>
-                    <td>$6,500</td>
-                  </tr>
-                  <tr>
-                    <td>3</td>
-                    <td>2021</td>
-                    <td>TAX789</td>
-                    <td>24680</td>
-                    <td>$70,000</td>
-                    <td>$7,200</td>
-                  </tr>
-                  <tr>
-                    <td>4</td>
-                    <td>2020</td>
-                    <td>TAX012</td>
-                    <td>13579</td>
-                    <td>$55,000</td>
-                    <td>$5,500</td>
-                  </tr>
-                  <tr>
-                    <td>5</td>
-                    <td>2019</td>
-                    <td>TAX345</td>
-                    <td>97531</td>
-                    <td>$45,000</td>
-                    <td>$4,500</td>
-                  </tr>
-                </tbody>
-              </Table>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
-      <Footer />
+      <Card className="mt-4">
+        <Card.Body>
+          <h3>All Tax Information:</h3>
+          <Table striped bordered hover responsive>
+            <thead>
+              <tr>
+                <th>Month</th>
+                <th>Year</th>
+                <th>Taxable Income</th>
+                <th>Tax Amount</th>
+                <th>Total Credits</th>
+                <th>Net Tax</th>
+                <th>Paid</th>
+              </tr>
+            </thead>
+            <tbody>
+              {allTaxData.map((taxData, index) => (
+                <tr key={index}>
+                  <td>{taxData.month}</td>
+                  <td>{taxData.year}</td>
+                  <td>₹ {taxData.taxableIncome}</td>
+                  <td>₹ {taxData.taxAmount}</td>
+                  <td>₹ {taxData.totalCredits}</td>
+                  <td>₹ {taxData.netTax}</td>
+                  <td>
+                    <Form.Check
+                      type="switch"
+                      id={`switch-${index}`}
+                      label=""
+                      checked={taxData.isPaid}
+                      onChange={() => handlePaidSwitch(index)}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </Card.Body>
+      </Card>
+      <Modal show={showModal} onHide={handleCloseModal}>
+        <Modal.Header closeButton>
+          <Modal.Title>Tax Report</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>
+            <strong>Taxable Income:</strong> ₹ {taxResult.taxableIncome}<br />
+            <strong>Tax Amount:</strong> ₹ {taxResult.taxAmount}<br />
+            <strong>Total Credits:</strong> ₹ {taxResult.totalCredits}<br />
+            <strong>Net Tax:</strong> ₹ {taxResult.netTax}<br />
+            <strong>Paid:</strong> {taxResult.isPaid ? 'Yes' : 'No'}<br />
+            <strong>Month:</strong> {formData.month}, <strong>Year:</strong> {formData.year}
+          </p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleCloseModal}>
+            Close
+          </Button>
+          {taxResult.taxableIncome !== '' && (
+            <Button variant="primary" onClick={downloadPDFReport}>
+              Download Report
+            </Button>
+          )}
+        </Modal.Footer>
+      </Modal>
     </Container>
   );
 };
 
-export default TaxPreparation;
+export default TaxPrepApp;

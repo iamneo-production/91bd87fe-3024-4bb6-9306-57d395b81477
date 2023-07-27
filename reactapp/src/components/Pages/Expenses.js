@@ -1,93 +1,52 @@
-import React, { useState } from 'react';
-import { Container, Row, Col, Card, Form, Button, ListGroup } from 'react-bootstrap';
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+import { Button, Card, Col, Container, Form, ListGroup, Row } from 'react-bootstrap';
 import AppNavbar from '../NavBar/Navbar';
 import Slidebar from '../NavBar/Slidebar';
 import Footer from '../NavBar/footer';
 
+const API_BASE_URL = 'http://localhost:8181/api';
+
 const ExpenseTracker = () => {
-  const [expenses, setExpenses] = useState([
-    {
-      type: 'expense',
-      description: 'Services',
-      amount: '50',
-      category: 'Office Expenses',
-      receipt: null,
-    },
-    {
-      type: 'expense',
-      description: 'Loan',
-      amount: '100',
-      category: 'Business Loan',
-      receipt: null,
-    },
-    {
-      type: 'expense',
-      description: 'Goods',
-      amount: '200',
-      category: 'Goods Expenses',
-      receipt: null,
-    },
-    {
-      type: 'expense',
-      description: 'Marketing',
-      amount: '150',
-      category: 'Marketing Expenses',
-      receipt: null,
-    },
-    {
-      type: 'expense',
-      description: 'Rent',
-      amount: '500',
-      category: 'Office Rent',
-      receipt: null,
-    },
-  ]);
-
-  const [sales, setSales] = useState([
-    {
-      type: 'sale',
-      description: 'Product A',
-      amount: '500',
-      category: 'Product Sales',
-      receipt: null,
-    },
-    {
-      type: 'sale',
-      description: 'Service B',
-      amount: '1000',
-      category: 'Service Sales',
-      receipt: null,
-    },
-    {
-      type: 'sale',
-      description: 'Product C',
-      amount: '800',
-      category: 'Product Sales',
-      receipt: null,
-    },
-    {
-      type: 'sale',
-      description: 'Service D',
-      amount: '1200',
-      category: 'Service Sales',
-      receipt: null,
-    },
-    {
-      type: 'sale',
-      description: 'Product E',
-      amount: '700',
-      category: 'Product Sales',
-      receipt: null,
-    },
-  ]);
-
+  const [expenses, setExpenses] = useState([]);
+  const [sales, setSales] = useState([]);
   const [newTransaction, setNewTransaction] = useState({
     type: '',
     description: '',
     amount: '',
-    category: '',
-    receipt: null,
+    category: ''
+    
   });
+const  vfe=localStorage.getItem('email');
+
+  useEffect(() => {
+    // Fetch data from the server
+    const fetchTransactions = async () => {
+      try {
+        const authToken = localStorage.getItem('token');
+        if (!authToken) {
+          console.error('User is not authenticated. Redirect to login or show error message.');
+          return;
+        }
+
+        const config = {
+          headers: {
+            Authorization: `Bearer ${authToken}`
+          }
+        };
+
+        const expensesResponse = await axios.get(`${API_BASE_URL}/expenses`, config);
+        setExpenses(expensesResponse.data);
+
+        const salesResponse = await axios.get(`${API_BASE_URL}/sales`, config);
+        setSales(salesResponse.data);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
+
+    fetchTransactions();
+  }, []);
 
   const handleInputChange = (e) => {
     setNewTransaction({
@@ -103,30 +62,65 @@ const ExpenseTracker = () => {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (newTransaction.type === 'expense') {
-      setExpenses([...expenses, newTransaction]);
-    } else if (newTransaction.type === 'sale') {
-      setSales([...sales, newTransaction]);
-    }
-    setNewTransaction({
-      type: '',
-      description: '',
-      amount: '',
-      category: '',
-      receipt: null,
-    });
-  };
 
+    try {
+      const authToken = localStorage.getItem('token');
+      if (!authToken) {
+        console.error('User is not authenticated. Redirect to login or show error message.');
+        return;
+      }
+
+      const config = {
+        headers: {
+          Authorization: `Bearer ${authToken}`
+        }
+      };
+
+      if (newTransaction.type === 'expense') {
+        await axios.post(`${API_BASE_URL}/expenses`, newTransaction, config);
+      } else if (newTransaction.type === 'sale') {
+        await axios.post(`${API_BASE_URL}/sales`, newTransaction, config);
+      }
+
+      // Refetch the data after adding the new transaction
+      const expensesResponse = await axios.get(`${API_BASE_URL}/expenses`, config);
+      setExpenses(expensesResponse.data);
+
+      const salesResponse = await axios.get(`${API_BASE_URL}/sales`, config);
+      setSales(salesResponse.data);
+
+      setNewTransaction({
+        type: '',
+        description: '',
+        amount: '',
+        category: '',
+        mail: localStorage.getItem('email')
+
+      });
+    } catch (error) {
+      console.error('Error adding transaction:', error);
+    }
+  };
+  const monthOptions = Array.from({ length: 12 }, (_, index) => {
+    const monthValue = index + 1;
+    return (
+      <option key={monthValue} value={monthValue}>
+        {new Date(0, index).toLocaleString('default', { month: 'long' })}
+      </option>
+    );
+  });
   return (
     <Container>
       <Container fluid>
         <Row>
-          <Col md={1}><Slidebar /></Col>
+          <Col md={1}>
+            <Slidebar />
+            </Col>
           <AppNavbar />
-          </Row>
-          </Container>
+        </Row>
+      </Container>
       <Row className="justify-content-center mt-5">
         <Col md={6}>
           <Card>
@@ -178,19 +172,36 @@ const ExpenseTracker = () => {
                     <option value="Loan">Loan</option>
                   </Form.Control>
                 </Form.Group>
-                <Form.Group controlId="receipt">
-                  <Form.Label>Receipt</Form.Label>
-                  <Form.Control type="file" name="receipt" onChange={handleFileChange} />
-                </Form.Group>
-                <Button variant="primary" type="submit">
-                  Add Transaction
+                <Form.Group controlId="month">
+                    <Form.Label>Month</Form.Label>
+                    <Form.Control
+                      as="select"
+                      name="month"
+                      value={newTransaction.month}
+                      onChange={handleInputChange}
+                    >
+                      <option value="">Select Month</option>
+                      {monthOptions}
+                    </Form.Control>
+                  </Form.Group>
+                  <Form.Group controlId="year">
+                    <Form.Label>Year</Form.Label>
+                    <Form.Control
+                      type="number"
+                      name="year"
+                      value={newTransaction.year}
+                      onChange={handleInputChange}
+                    />
+                  </Form.Group>
+                  <Button variant="primary" type="submit">
+                    Add Transaction
                 </Button>
               </Form>
             </Card.Body>
           </Card>
         </Col>
       </Row>
-      <Row className="justify-content-center mt-4" style={{height:'200px'}}>
+      <Row className="justify-content-center mt-4" style={{ height: '200px' }}>
         <Col md={6}>
           <Card>
             <Card.Header as="h5">Expense List</Card.Header>
@@ -238,6 +249,7 @@ const ExpenseTracker = () => {
           </Card>
         </Col>
       </Row>
+      <Footer />
     </Container>
   );
 };

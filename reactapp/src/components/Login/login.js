@@ -1,10 +1,10 @@
-import {React,  useState ,useEffect} from 'react';
-import {Link,useNavigate} from 'react-router-dom';
-import Validation from './loginvalid';
 import axios from 'axios';
 import jwt_decode from "jwt-decode";
-import { login, selectUser } from '../features/userslice';
-import {connect, useDispatch,useSelector} from 'react-redux';
+import { React, useEffect, useState } from 'react';
+import { connect, useDispatch, useSelector } from 'react-redux';
+import { Link, useNavigate } from 'react-router-dom';
+import { selectUser } from '../features/userslice';
+import Validation from './loginvalid';
 
 function Login(props) {
     const [user,setUser]=useState({});
@@ -40,13 +40,33 @@ function Login(props) {
       const redux_user=useSelector(selectUser);
       const dispatch=useDispatch();
 
-      const handleSubmit = (event) => {
+      const handleSubmit = async(event) => {
         event.preventDefault();
         const err = Validation(values);
         setErrors(err);
         if (err.email === '' && err.password === '') {
           props.setUsername(values.email);
-          navigate("/GeneralLedger");
+          try{
+            const response=await axios.post(
+              "http://localhost:8181/api/v1/auth/authenticate",
+              {
+                email:values.email,
+                password:values.password
+              }
+              ).then((response)=>{
+                console.log(response.data);
+                localStorage.setItem('token',response.data.token);
+                localStorage.setItem('email',values.email);
+                console.log(localStorage.getItem('token'));
+              })
+              
+              window.alert("Sucessfully Logged In");
+              navigate("/GeneralLedger");
+            }catch(error){
+              console.log(error);
+              window.alert("Invalid Credentials");
+            
+          }
 
         }
       };
@@ -68,6 +88,8 @@ function Login(props) {
                 </div>
                 <button type='submit' className='btn btn-success w-100 rounded-0'><strong>Login</strong></button>
                 <hr />
+                <Link to="/otp" className='btn btn-default w-100 bg-light rounded-0 text-decoration-none'>Forgot Password</Link>
+
                 <Link to="/Register" className='btn btn-default w-100 bg-light rounded-0 text-decoration-none'>Create Account</Link>
 
             </form>

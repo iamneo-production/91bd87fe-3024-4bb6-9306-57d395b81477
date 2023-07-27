@@ -1,20 +1,18 @@
 import React, { useState } from 'react';
-import { Navbar, Nav, NavDropdown } from 'react-bootstrap';
-import { useSelector } from 'react-redux';
-import BellIcon from '../icons/bell';
-import { selectUser } from '../features/userslice';
-import EnvelopeIcon from '../icons/envelope';
-import { FaUser } from 'react-icons/fa';
-import { AiFillSetting ,AiOutlineLogout} from 'react-icons/ai';
-import './nav.css';
-import { Container } from 'react-bootstrap';
+import { Container, Nav, Navbar } from 'react-bootstrap';
+import { AiFillSetting } from 'react-icons/ai';
 import { connect } from 'react-redux';
+import BellIcon from '../icons/bell';
+import EnvelopeIcon from '../icons/envelope';
+import './nav.css';
 
 
 const AppNavbar = (props) => {
   const reduxUser = props.username;
   const mail = reduxUser;
   const username = mail.substr(0, mail.indexOf('@'));
+  localStorage.setItem("uname",username);
+  const usname=localStorage.getItem("uname");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const handleMouseEnter = () => {
@@ -31,7 +29,7 @@ const AppNavbar = (props) => {
       <Navbar.Toggle aria-controls="basic-navbar-nav" className="fixed" />
       <Navbar.Collapse id="basic-navbar-nav">
         <Nav className="ml-auto align-items-center">
-          <Nav.Link href="#home">
+          <Nav.Link href="/Analysis">
             <EnvelopeIcon />
           </Nav.Link>
           
@@ -46,7 +44,7 @@ const AppNavbar = (props) => {
               width="32"
               height="32"
             />
-          </div><div style={{marginRight:30}}>{username}</div>
+          </div><div style={{marginRight:30}}>{usname}</div>
           
         </Nav>  
       </Navbar.Collapse>

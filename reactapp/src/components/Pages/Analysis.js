@@ -1,95 +1,109 @@
-import React from 'react';
-import ApexCharts from 'react-apexcharts';
-import AppNavbar from '../NavBar/Navbar';
+import React, { useState, useEffect } from 'react';
+import { Container, Row, Col ,Card} from 'react-bootstrap';
+import axios from 'axios';
+
+import 'bootstrap/dist/css/bootstrap.min.css';
 import Slidebar from '../NavBar/Slidebar';
-import { Container, Row, Col } from 'react-bootstrap';
-import Footer from '../NavBar/footer';
+import Navbar from '../NavBar/Navbar';
 
-const ProfitLossStatement = () => {
-  const data = {
-    revenue: [5000, 6000, 7000, 8000, 9000, 10000],
-    expenses: [2000, 2500, 3000, 3500, 4000, 4500],
-    months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+function App() {
+  const [feedback, setFeedback] = useState('');
+  const [feedbackData, setFeedbackData] = useState([]);
+
+  useEffect(() => {
+    // Fetch feedback data when the component mounts
+    fetchFeedbackData();
+  }, []);
+
+  const handleSubmitFeedback = async (e) => {
+    e.preventDefault();
+    // Implement your API call to submit feedback using Axios here
+    try {
+      // Call your feedback API endpoint with the token in the headers
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        'http://localhost:8181/api/v1/users/addUserFeedback',
+        { feedback },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      // Update the feedback data state with the new feedback
+      setFeedbackData([...feedbackData, response.data.feedback]);
+      // Clear the feedback input
+      setFeedback('');
+    } catch (error) {
+      // Handle feedback submission error
+      console.log('Feedback submission error:', error);
+    }
   };
+  const  vfe=localStorage.getItem('email');
 
-  const statementOptions = {
-    chart: {
-      type: 'bar',
-    },
-    series: [
-      {
-        name: 'Revenue',
-        data: data.revenue,
-      },
-      {
-        name: 'Expenses',
-        data: data.expenses,
-      },
-    ],
-    xaxis: {
-      categories: data.months,
-    },
-  };
-
-  const candlestickData = [
-    {
-      x: new Date('2023-01-01').getTime(),
-      y: [5000, 8000, 4000, 9000],
-    },
-    {
-      x: new Date('2023-02-01').getTime(),
-      y: [6000, 8500, 3500, 9500],
-    },
-    {
-      x: new Date('2023-03-01').getTime(),
-      y: [7000, 9000, 5000, 10000],
-    },
-  ];
-
-  const candlestickOptions = {
-    chart: {
-      type: 'candlestick',
-      toolbar: {
-        show: false,
-      },
-    },
-    series: [
-      {
-        data: candlestickData,
-      },
-    ],
-    xaxis: {
-      type: 'datetime',
-    },
+  const fetchFeedbackData = async () => {
+    try {
+      // Call your feedback API endpoint with the token in the headers
+      const token = localStorage.getItem('token');
+      const response = await axios.get('http://localhost:8082/api/v1/feed/getFeedback', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      setFeedbackData(response.data);
+    } catch (error) {
+      // Handle error while fetching feedback data
+      console.log('Error fetching feedback:', error);
+    }
   };
 
   return (
-    <div>
-      <Container fluid>
-        <Row>
-          <Col md={1}><Slidebar /></Col>
-            <AppNavbar />
-          </Row>
-      </Container>
-      <div style={{marginLeft:'80px'}}>
-      <div>
-        <h2>Profit and Loss Statement</h2>
-        <ApexCharts options={statementOptions} series={statementOptions.series} type="bar" height={290} width={1300} />
-      </div>
-      <div>
-        <h2>Candlestick Chart</h2>
-        <ApexCharts
-          options={candlestickOptions}
-          series={candlestickOptions.series}
-          type="candlestick"
-          height={290}
-          width={1300}
-        />
-      </div>
-    </div>
-    <Footer />
-    </div>
+    <Container className="mt-4">
+      <Slidebar />
+      <Navbar />
+      <Row>
+        <Col md={6}>
+          <div className="card">
+            <div className="card-body">
+              <h5 className="card-title">Feedback Form</h5>
+              <form onSubmit={handleSubmitFeedback}>
+                {/* Textarea for feedback */}
+                <textarea
+                  className="form-control mb-3"
+                  rows="4"
+                  value={feedback}
+                  onChange={(e) => setFeedback(e.target.value)}
+                />
+                <button type="submit" className="btn btn-primary">
+                  Submit Feedback
+                </button>
+              </form>
+            </div>
+          </div>
+        </Col>
+      </Row>
+      <Row className="mt-4">
+        <Col md={6}>
+        <Card>
+      <Card.Body>
+        <h5>Feedback Display</h5>
+        {feedbackData.length === 0 ? (
+          <p>No feedback received yet.</p>
+        ) : (
+          <ul>
+            {feedbackData.map((feedbackItem, index) => (
+              <li key={index}>
+                <strong>Feedback:</strong> {feedbackItem.feedback}
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card.Body>
+    </Card>
+        </Col>
+      </Row>
+    </Container>
   );
-};
+}
 
-export default ProfitLossStatement;
+export default App;

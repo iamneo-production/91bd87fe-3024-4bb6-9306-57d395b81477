@@ -28,9 +28,9 @@ function Slidebar() {
               <a href="/Expenses" className="nav_link" >
                 <i><AiOutlineShoppingCart /></i>
               </a>
-              <a href="/Analysis" className="nav_link" >
+              {/* <a href="/Analysis" className="nav_link" >
                 <i><TbDeviceAnalytics /></i>
-              </a>
+              </a> */}
               <a href="/Bill" className="nav_link" >
                 <i><TbFileInvoice/></i>
               </a>
